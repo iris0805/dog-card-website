@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全方位狗狗品種互動百科</title>
+    <!-- 引入 Tailwind CSS 確保極致的行動端適配與深色高對比主題 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // 配置 Tailwind 佈景主題，確保溫暖專業的深色主題
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 800: '#1e293b', 900: '#0f172a' },
+                        amber: { 400: '#fbbf24', 500: '#f59e0b' },
+                        warmOrange: '#ea580c'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 基礎字體與平滑滾動 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; -webkit-tap-highlight-color: transparent; }
+        /* 隱藏捲軸但保持可滾動 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 確保點擊區域至少 44x44px (iOS 規範) */
+        button, .touch-target { min-height: 44px; min-width: 44px; }
+        /* 卡片過渡動畫 */
+        .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.2); }
+        /* 屬性條動畫 */
+        .stat-fill { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+
+    <!-- 頂部導航列 -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-700 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🐾</span>
+                    <h1 class="text-xl sm:text-2xl font-bold text-amber-400">狗狗百科圖鑑</h1>
+                </div>
+                <!-- 模式切換按鈕 -->
+                <div class="flex bg-slate-800 rounded-full p-1 border border-slate-700">
+                    <button onclick="app.switchTab('encyclopedia')" id="tab-encyclopedia" class="touch-target px-4 py-1.5 rounded-full text-sm sm:text-base font-medium transition-colors bg-amber-500 text-slate-900">
+                        📚 圖鑑
+                    </button>
+                    <button onclick="app.switchTab('quiz')" id="tab-quiz" class="touch-target px-4 py-1.5 rounded-full text-sm sm:text-base font-medium transition-colors text-slate-400 hover:text-amber-400">
+                        🎯 飼主測驗
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- 視圖 1：圖鑑模式 -->
+        <section id="view-encyclopedia" class="block">
+            <!-- 搜尋與快篩區塊 -->
+            <div class="mb-8 space-y-4">
+                <div class="relative">
+                    <input type="text" id="searchInput" oninput="app.filterDogs()" placeholder="搜尋犬種 (支援中英文)..." 
+                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors touch-target shadow-inner text-white placeholder-slate-400">
+                </div>
+                
+                <!-- 體型與分組過濾標籤 -->
+                <div class="flex flex-wrap gap-2" id="filter-container">
+                    <button onclick="app.setFilter('all')" class="filter-btn touch-target px-4 py-2 rounded-full text-sm font-medium bg-amber-500 text-slate-900 transition-colors" data-filter="all">【全部顯示】</button>
+                    <button onclick="app.setFilter('small')" class="filter-btn touch-target px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:border-amber-400 transition-colors" data-filter="small">🐾 小型犬</button>
+                    <button onclick="app.setFilter('medium')" class="filter-btn touch-target px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:border-amber-400 transition-colors" data-filter="medium">🐕 中型犬</button>
+                    <button onclick="app.setFilter('large')" class="filter-btn touch-target px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:border-amber-400 transition-colors" data-filter="large">🦮 大型犬</button>
+                </div>
+            </div>
+
+            <!-- 犬種卡片網格 -->
+            <div id="dog-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- 由 JS 動態渲染 -->
+            </div>
+            
+            <!-- 無搜尋結果提示 -->
+            <div id="no-results" class="hidden text-center py-12">
+                <p class="text-4xl mb-4">😿</p>
+                <p class="text-slate-400 text-lg">找不到符合條件的狗狗</p>
+            </div>
+        </section>
+
+        <!-- 視圖 2：飼主適配度測驗 -->
+        <section id="view-quiz" class="hidden">
+            <div class="max-w-2xl mx-auto bg-slate-800 rounded-2xl p-6 sm:p-8 border border-slate-700 shadow-xl">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-amber-400 mb-2">天選之汪配對測驗 💖</h2>
+                    <p class="text-slate-400">回答 3 個生活情境問題，為您推薦最適合的毛小孩！</p>
+                </div>
+
+                <div class="space-y-8" id="quiz-questions">
+                    <!-- Q1 -->
+                    <div class="quiz-q" data-step="1">
+                        <p class="text-lg font-semibold mb-4">1. 您的居家空間大約是？🏠</p>
+                        <div class="grid grid-cols-1 gap-3">
+                            <button onclick="app.selectQuizAns(1, 1)" class="quiz-ans-1 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">小公寓 / 套房 (無前庭後院)</button>
+                            <button onclick="app.selectQuizAns(1, 2)" class="quiz-ans-1 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">一般住宅 / 大樓 (空間適中)</button>
+                            <button onclick="app.selectQuizAns(1, 3)" class="quiz-ans-1 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">透天厝 / 附有庭院的大空間</button>
+                        </div>
+                    </div>
+                    <!-- Q2 -->
+                    <div class="quiz-q" data-step="2">
+                        <p class="text-lg font-semibold mb-4">2. 您每天能專門帶狗散步放電的時間？⏱️</p>
+                        <div class="grid grid-cols-1 gap-3">
+                            <button onclick="app.selectQuizAns(2, 2)" class="quiz-ans-2 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">少於 30 分鐘 (平常較忙碌)</button>
+                            <button onclick="app.selectQuizAns(2, 3)" class="quiz-ans-2 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">30 ~ 60 分鐘 (適度運動)</button>
+                            <button onclick="app.selectQuizAns(2, 5)" class="quiz-ans-2 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">1 小時以上 (熱愛戶外活動)</button>
+                        </div>
+                    </div>
+                    <!-- Q3 -->
+                    <div class="quiz-q" data-step="3">
+                        <p class="text-lg font-semibold mb-4">3. 對於「掉毛」的容忍度？🧹</p>
+                        <div class="grid grid-cols-1 gap-3">
+                            <button onclick="app.selectQuizAns(3, 1)" class="quiz-ans-3 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">絕不妥協 (有鼻子過敏或潔癖)</button>
+                            <button onclick="app.selectQuizAns(3, 3)" class="quiz-ans-3 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">普通 (定期梳理打掃即可接受)</button>
+                            <button onclick="app.selectQuizAns(3, 5)" class="quiz-ans-3 touch-target p-4 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-left transition-colors">毫不在乎 (家裡有狗毛是愛的證明)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-700 text-center">
+                    <button onclick="app.submitQuiz()" id="submit-quiz-btn" disabled class="touch-target w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg bg-amber-500 text-slate-900 disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors">
+                        送出分析結果 🦴
+                    </button>
+                </div>
+            </div>
+
+            <!-- 測驗結果區 -->
+            <div id="quiz-result" class="hidden mt-8 max-w-5xl mx-auto">
+                <h3 class="text-xl font-bold text-center text-amber-400 mb-6">為您推薦的絕佳夥伴：</h3>
+                <div id="quiz-match-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- 動態渲染結果卡片 -->
+                </div>
+                <div class="text-center mt-8">
+                    <button onclick="app.resetQuiz()" class="text-slate-400 hover:text-amber-400 underline touch-target p-2">重新測驗</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 獨立卡片詳細資訊面板 (Modal) -->
+    <div id="dog-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <!-- 半透明遮罩 -->
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="app.closeModal()"></div>
+        <!-- 彈窗本體 -->
+        <div class="absolute inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 bg-slate-800 rounded-t-3xl sm:rounded-3xl w-full sm:w-[600px] max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl flex flex-col">
+            <!-- 關閉按鈕 -->
+            <div class="sticky top-0 right-0 flex justify-end p-4 bg-gradient-to-b from-slate-800 to-transparent z-10">
+                <button onclick="app.closeModal()" class="touch-target bg-slate-900/50 hover:bg-slate-700 rounded-full w-10 h-10 flex items-center justify-center text-white backdrop-blur transition-colors">
+                    ✕
+                </button>
+            </div>
+            
+            <div id="modal-content" class="px-6 pb-8 sm:px-8 -mt-6">
+                <!-- 動態注入詳細資訊 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 核心應用程式邏輯 -->
+    <script>
+        /**
+         * 犬類動物行為學資料庫 (dogDB)
+         * 包含 12 種代表性犬種，涵蓋五維屬性指數與照護特性。
+         * sizeValue: 1=小型(<10kg), 2=中型(10-25kg), 3=大型(>25kg)
+         * stats: 1-5 分 (1 最低/少，5 最高/多)
+         */
+        const dogDB = [
+            {
+                id: 'shiba', name: '柴犬', nameEn: 'Shiba Inu', origin: '日本', group: '工作犬/家庭犬', size: '中型犬', sizeValue: 2, icon: '🦊',
+                stats: { energy: 3, shedding: 5, friend: 3, train: 2, bark: 2 },
+                traits: { ear: '立耳', coat: '短雙層毛', tags: ['固執獨立', '換毛狂魔', '愛乾淨'] },
+                care: '雙層毛春秋兩季大量掉毛需勤梳理。極度聰明但有自己的個性，服從度較低，需要飼主耐心與堅定的引導。', apt: '適合一般住宅，新手挑戰度中高。', barkType: 'medium'
+            },
+            {
+                id: 'golden', name: '黃金獵犬', nameEn: 'Golden Retriever', origin: '英國', group: '獵犬/家庭犬', size: '大型犬', sizeValue: 3, icon: '🌞',
+                stats: { energy: 4, shedding: 4, friend: 5, train: 5, bark: 2 },
+                traits: { ear: '垂耳', coat: '長毛', tags: ['陽光天使', '水獵犬', '高親和力'] },
+                care: '極度友善熱情，幾乎無看家能力。需要充足的運動與陪伴，易有髖關節發育不良等遺傳疾病，需注意體重控制。', apt: '適合大空間/透天，非常適合新手與家庭。', barkType: 'large'
+            },
+            {
+                id: 'border_collie', name: '邊境牧羊犬', nameEn: 'Border Collie', origin: '英蘇邊界', group: '牧羊犬組', size: '中型犬', sizeValue: 2, icon: '🐑',
+                stats: { energy: 5, shedding: 3, friend: 4, train: 5, bark: 3 },
+                traits: { ear: '半立耳', coat: '中長毛', tags: ['智商第一', '高放電需求', '眼神控制'] },
+                care: '智商在犬界排名第一，學習能力極強，但也因此若缺乏足夠的身心消耗（散步與心智訓練），極易產生破壞行為。', apt: '需要極大運動量，不建議慵懶型新手飼養。', barkType: 'medium'
+            },
+            {
+                id: 'poodle', name: '貴賓犬 / 泰迪', nameEn: 'Poodle', origin: '法國/德國', group: '玩賞犬組', size: '小型犬', sizeValue: 1, icon: '🧸',
+                stats: { energy: 4, shedding: 1, friend: 4, train: 5, bark: 4 },
+                traits: { ear: '垂耳', coat: '單層捲毛', tags: ['不掉毛', '智商極高', '需美容'] },
+                care: '幾乎不掉毛、體味淡，但捲毛需每日梳理並定期送洗剪毛以免打結。非常聰明黏人，可能會有分離焦慮。', apt: '完美適合公寓與過敏體質新手。', barkType: 'small'
+            },
+            {
+                id: 'frenchie', name: '法國鬥牛犬', nameEn: 'French Bulldog', origin: '法國', group: '伴侶犬組', size: '小型犬', sizeValue: 1, icon: '🦇',
+                stats: { energy: 2, shedding: 2, friend: 5, train: 3, bark: 1 },
+                traits: { ear: '蝙蝠耳', coat: '短毛', tags: ['短鼻扁臉', '怕熱', '親人幽默'] },
+                care: '短鼻犬種極度不耐熱，夏天需嚴防中暑，且禁止劇烈運動。容易有呼吸道及脊椎遺傳疾病，醫療開銷可能較高。', apt: '運動需求低，適合小公寓及生活步調慢的飼主。', barkType: 'small'
+            },
+            {
+                id: 'husky', name: '西伯利亞哈士奇', nameEn: 'Siberian Husky', origin: '俄羅斯', group: '工作犬組', size: '大型犬', sizeValue: 3, icon: '🐺',
+                stats: { energy: 5, shedding: 5, friend: 4, train: 2, bark: 5 },
+                traits: { ear: '立耳', coat: '雙層厚毛', tags: ['雪橇犬', '話多愛叫', '破壞王'] },
+                care: '精力無限的雪橇犬，每天需要大量高強度的奔跑。極度容易掉毛，且喜歡用「狼嚎」溝通，服從性低，容易走丟。', apt: '需要極大空間與運動時間，新手慎入。', barkType: 'husky'
+            },
+            {
+                id: 'corgi', name: '威爾斯柯基犬', nameEn: 'Pembroke Welsh Corgi', origin: '英國', group: '牧羊犬組', size: '中小型犬', sizeValue: 2, icon: '🍞',
+                stats: { energy: 4, shedding: 4, friend: 4, train: 3, bark: 4 },
+                traits: { ear: '立耳', coat: '短毛', tags: ['短腿大屁股', '牧牛犬', '警覺性高'] },
+                care: '曾是牧牛犬，活動量比想像中大。底盤低且身長，嚴禁頻繁爬樓梯與跳躍以保護脊椎。叫聲宏亮，警戒心強。', apt: '適合一般住宅，需注意其脊椎健康。', barkType: 'medium'
+            },
+            {
+                id: 'labrador', name: '拉布拉多犬', nameEn: 'Labrador Retriever', origin: '加拿大', group: '工作/獵犬組', size: '大型犬', sizeValue: 3, icon: '🦮',
+                stats: { energy: 4, shedding: 4, friend: 5, train: 5, bark: 2 },
+                traits: { ear: '垂耳', coat: '短毛', tags: ['導盲犬常客', '貪吃', '脾氣極佳'] },
+                care: '性格溫和且樂於取悅主人，是優秀的工作犬。極度貪吃，需嚴格控制飲食以防肥胖，晚年需注意關節問題。', apt: '適合大空間，性情穩定適合家庭新手。', barkType: 'large'
+            },
+            {
+                id: 'gsd', name: '德國牧羊犬', nameEn: 'German Shepherd', origin: '德國', group: '工作犬組', size: '大型犬', sizeValue: 3, icon: '🚓',
+                stats: { energy: 5, shedding: 4, friend: 3, train: 5, bark: 4 },
+                traits: { ear: '立耳', coat: '中長毛', tags: ['護衛防禦', '軍警犬', '忠誠滿分'] },
+                care: '勇敢且具防禦本能，只對家人忠誠，對陌生人有警惕心。需要極強的社會化與訓練，否則容易產生攻擊行為。', apt: '需要有經驗且能給予嚴格訓練的飼主。', barkType: 'large'
+            },
+            {
+                id: 'chihuahua', name: '吉娃娃', nameEn: 'Chihuahua', origin: '墨西哥', group: '玩賞犬組', size: '小型犬', sizeValue: 1, icon: '👽',
+                stats: { energy: 3, shedding: 2, friend: 3, train: 2, bark: 5 },
+                traits: { ear: '大立耳', coat: '短/長毛', tags: ['警戒心強', '體型迷你', '佔有欲高'] },
+                care: '體型極小，骨骼脆弱需避免摔傷。對主人佔有欲強，面對體型比自己大的狗也毫不畏懼，容易吠叫，需從小社會化。', apt: '極適合小空間，運動需求低，但需注意防寒。', barkType: 'small'
+            },
+            {
+                id: 'bichon', name: '比熊犬', nameEn: 'Bichon Frise', origin: '地中海', group: '玩賞犬組', size: '小型犬', sizeValue: 1, icon: '☁️',
+                stats: { energy: 3, shedding: 1, friend: 5, train: 4, bark: 2 },
+                traits: { ear: '垂耳', coat: '捲毛', tags: ['棉花糖', '親人', '低致敏性'] },
+                care: '性格歡樂無心機，非常黏人。毛髮結構不易掉毛，非常適合過敏體質，但需要大量的美容花費來維持澎澎的外觀。', apt: '極適合公寓與家庭，新手友善度極高。', barkType: 'small'
+            },
+            {
+                id: 'formosan', name: '台灣犬 / 台灣土狗', nameEn: 'Formosan Mountain Dog', origin: '台灣', group: '狩獵犬組', size: '中型犬', sizeValue: 2, icon: '⛰️',
+                stats: { energy: 4, shedding: 2, friend: 3, train: 4, bark: 4 },
+                traits: { ear: '蝙蝠立耳', coat: '短毛', tags: ['三角頭', '鐮刀尾', '機警忠誠'] },
+                care: '台灣原生特有種，適應力強且抗病力佳。地域性與防衛本能強，對陌生人保留，對主人則絕對忠誠。', apt: '適合有庭院或農舍防衛，需有經驗的飼主引導社會化。', barkType: 'medium'
+            }
+        ];
+
+        /**
+         * 應用程式主邏輯模組 (使用立即執行函式封裝，避免污染全域並增強 iframe 相容性)
+         */
+        const app = (function() {
+            let currentFilter = 'all';
+            let searchQuery = '';
+            let quizAnswers = { 1: 0, 2: 0, 3: 0 };
+
+            // Web Audio API 實例 (延遲初始化以符合瀏覽器自動播放政策)
+            let audioCtx = null;
+
+            // DOM 元素快取
+            const gridEl = document.getElementById('dog-grid');
+            const noResultsEl = document.getElementById('no-results');
+            const searchInput = document.getElementById('searchInput');
+            const modalEl = document.getElementById('dog-modal');
+            const modalContent = document.getElementById('modal-content');
+            const filterContainer = document.getElementById('filter-container');
+
+            // 根據數值生成屬性條的 HTML (Tailwind 類別)
+            function generateStatBars(value, colorClass = 'bg-amber-500') {
+                let html = '<div class="flex gap-1 h-3 mt-1">';
+                for (let i = 1; i <= 5; i++) {
+                    let fill = i <= value ? colorClass : 'bg-slate-700';
+                    let glow = i <= value ? 'shadow-[0_0_8px_rgba(245,158,11,0.5)]' : '';
+                    if(colorClass !== 'bg-amber-500') glow = ''; // 只有主要顏色有發光
+                    html += `<div class="flex-1 rounded-sm ${fill} ${glow}"></div>`;
+                }
+                html += '</div>';
+                return html;
+            }
+
+            // 渲染犬種卡片列表
+            function renderGrid() {
+                // 過濾資料
+                const filteredDogs = dogDB.filter(dog => {
+                    const matchSearch = dog.name.includes(searchQuery) || dog.nameEn.toLowerCase().includes(searchQuery.toLowerCase());
+                    const matchFilter = currentFilter === 'all' || 
+                                      (currentFilter === 'small' && dog.sizeValue === 1) ||
+                                      (currentFilter === 'medium' && dog.sizeValue === 2) ||
+                                      (currentFilter === 'large' && dog.sizeValue === 3);
+                    return matchSearch && matchFilter;
+                });
+
+                gridEl.innerHTML = '';
+                
+                if (filteredDogs.length === 0) {
+                    gridEl.classList.add('hidden');
+                    noResultsEl.classList.remove('hidden');
+                    return;
+                }
+                
+                gridEl.classList.remove('hidden');
+                noResultsEl.classList.add('hidden');
+
+                // 產生卡片
+                filteredDogs.forEach(dog => {
+                    const card = document.createElement('div');
+                    card.className = "card-hover bg-slate-800 rounded-2xl p-5 cursor-pointer border border-slate-700 flex flex-col h-full";
+                    // 為了沙盒相容，不依賴全域 window.event
+                    card.onclick = () => app.openModal(dog.id);
+                    
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-white tracking-wide">${dog.name}</h3>
+                                <p class="text-xs text-slate-400 mt-1">${dog.nameEn}</p>
+                            </div>
+                            <span class="text-4xl filter drop-shadow-md">${dog.icon}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-700 text-amber-400">${dog.size}</span>
+                            <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-700 text-slate-300">${dog.origin}</span>
+                        </div>
+                        <div class="mt-auto space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400"><span>運動能量</span><span>${dog.stats.energy}/5</span></div>
+                                ${generateStatBars(dog.stats.energy, 'bg-warmOrange')}
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400"><span>友善程度</span><span>${dog.stats.friend}/5</span></div>
+                                ${generateStatBars(dog.stats.friend)}
+                            </div>
+                        </div>
+                    `;
+                    gridEl.appendChild(card);
+                });
+            }
+
+            // 初始化與合成犬吠聲 (Web Audio API)
+            function initAudio() {
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            }
+
+            function playSyntheticBark(type) {
+                initAudio();
+                const t = audioCtx.currentTime;
+                
+                if (type === 'husky') {
+                    // 模擬哈士奇長音狼嚎 (Sine wave, pitch sweep)
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    // 頻率變化：起音 300 -> 升到 500 -> 降到 250
+                    osc.frequency.setValueAtTime(300, t);
+                    osc.frequency.linearRampToValueAtTime(500, t + 0.5);
+                    osc.frequency.linearRampToValueAtTime(250, t + 1.8);
+                    
+                    // 音量包絡 (Envelope)
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(0.8, t + 0.2);
+                    gain.gain.setValueAtTime(0.8, t + 1.2);
+                    gain.gain.linearRampToValueAtTime(0, t + 2.0);
+                    
+                    osc.start(t);
+                    osc.stop(t + 2.0);
+                    
+                } else if (type === 'small') {
+                    // 小型犬：清脆高頻短促叫聲兩下
+                    for (let i = 0; i < 2; i++) {
+                        let offset = i * 0.15;
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'square';
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        
+                        osc.frequency.setValueAtTime(800, t + offset);
+                        osc.frequency.exponentialRampToValueAtTime(400, t + offset + 0.05);
+                        
+                        gain.gain.setValueAtTime(0, t + offset);
+                        gain.gain.linearRampToValueAtTime(0.3, t + offset + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.01, t + offset + 0.1);
+                        
+                        osc.start(t + offset);
+                        osc.stop(t + offset + 0.1);
+                    }
+                } else {
+                    // 中大型犬：低沉吠叫
+                    const baseFreq = type === 'large' ? 180 : 350;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(baseFreq, t);
+                    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.6, t + 0.15);
+                    
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                    
+                    osc.start(t);
+                    osc.stop(t + 0.2);
+                }
+            }
+
+            return {
+                // 初始化
+                init: function() {
+                    renderGrid();
+                },
+                
+                // 標籤頁切換
+                switchTab: function(tabName) {
+                    const encyView = document.getElementById('view-encyclopedia');
+                    const quizView = document.getElementById('view-quiz');
+                    const btnEncy = document.getElementById('tab-encyclopedia');
+                    const btnQuiz = document.getElementById('tab-quiz');
+
+                    if (tabName === 'encyclopedia') {
+                        encyView.classList.remove('hidden');
+                        quizView.classList.add('hidden');
+                        
+                        btnEncy.className = "touch-target px-4 py-1.5 rounded-full text-sm sm:text-base font-medium transition-colors bg-amber-500 text-slate-900";
+                        btnQuiz.className = "touch-target px-4 py-1.5 rounded-full text-sm sm:text-base font-medium transition-colors text-slate-400 hover:text-amber-400";
+                    } else {
+                        encyView.classList.add('hidden');
+                        quizView.classList.remove('hidden');
+                        
+                        btnQuiz.className = "touch-target px-4 py-1.5 rounded-full text-sm sm:text-base font-medium transition-colors bg-amber-500 text-slate-900";
+                        btnEncy.className = "touch-target px-4 py-1.5 rounded-full text-sm sm:text-base font-medium transition-colors text-slate-400 hover:text-amber-400";
+                    }
+                },
+
+                // 搜尋與過濾
+                filterDogs: function() {
+                    searchQuery = searchInput.value;
+                    renderGrid();
+                },
+
+                setFilter: function(size) {
+                    currentFilter = size;
+                    // 更新按鈕樣式
+                    const btns = filterContainer.querySelectorAll('.filter-btn');
+                    btns.forEach(btn => {
+                        if (btn.dataset.filter === size) {
+                            btn.className = "filter-btn touch-target px-4 py-2 rounded-full text-sm font-medium bg-amber-500 text-slate-900 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.4)]";
+                        } else {
+                            btn.className = "filter-btn touch-target px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:border-amber-400 transition-colors";
+                        }
+                    });
+                    renderGrid();
+                },
+
+                // 彈窗 (Modal) 控制
+                openModal: function(dogId) {
+                    const dog = dogDB.find(d => d.id === dogId);
+                    if(!dog) return;
+
+                    const tagsHtml = dog.traits.tags.map(t => `<span class="bg-slate-700 text-slate-300 px-2 py-1 rounded text-sm">${t}</span>`).join('');
+                    
+                    modalContent.innerHTML = `
+                        <div class="flex items-center gap-4 mb-6 pt-6">
+                            <div class="w-20 h-20 bg-slate-700 rounded-full flex items-center justify-center text-5xl shrink-0 shadow-inner">
+                                ${dog.icon}
+                            </div>
+                            <div>
+                                <h2 class="text-3xl font-bold text-white">${dog.name}</h2>
+                                <p class="text-slate-400">${dog.nameEn} · ${dog.origin}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                            <div><span class="text-slate-400 text-sm block">分類群組</span><span class="font-medium text-amber-400">${dog.group}</span></div>
+                            <div><span class="text-slate-400 text-sm block">體型</span><span class="font-medium text-amber-400">${dog.size}</span></div>
+                            <div><span class="text-slate-400 text-sm block">耳朵</span><span class="font-medium text-white">${dog.traits.ear}</span></div>
+                            <div><span class="text-slate-400 text-sm block">被毛</span><span class="font-medium text-white">${dog.traits.coat}</span></div>
+                        </div>
+
+                        <h3 class="font-semibold text-lg text-white border-b border-slate-700 pb-2 mb-4">五維屬性雷達</h3>
+                        <div class="space-y-4 mb-6">
+                            <div class="flex items-center justify-between"><span class="w-24 text-slate-300 text-sm">⚡ 運動能量</span><div class="w-full ml-4">${generateStatBars(dog.stats.energy, 'bg-warmOrange')}</div></div>
+                            <div class="flex items-center justify-between"><span class="w-24 text-slate-300 text-sm">🧹 掉毛程度</span><div class="w-full ml-4">${generateStatBars(dog.stats.shedding, 'bg-amber-500')}</div></div>
+                            <div class="flex items-center justify-between"><span class="w-24 text-slate-300 text-sm">💖 友善程度</span><div class="w-full ml-4">${generateStatBars(dog.stats.friend, 'bg-pink-500')}</div></div>
+                            <div class="flex items-center justify-between"><span class="w-24 text-slate-300 text-sm">🧠 易訓練度</span><div class="w-full ml-4">${generateStatBars(dog.stats.train, 'bg-blue-400')}</div></div>
+                            <div class="flex items-center justify-between"><span class="w-24 text-slate-300 text-sm">📢 吠叫警惕</span><div class="w-full ml-4">${generateStatBars(dog.stats.bark, 'bg-purple-400')}</div></div>
+                        </div>
+
+                        <h3 class="font-semibold text-lg text-white border-b border-slate-700 pb-2 mb-4">行為與照護須知</h3>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${tagsHtml}
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed mb-2">${dog.care}</p>
+                        <p class="text-amber-400 text-sm leading-relaxed font-medium bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">${dog.apt}</p>
+
+                        <div class="mt-8 flex justify-center">
+                            <button onclick="app.playBark('${dog.barkType}')" class="touch-target bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 px-8 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all transform hover:scale-105 flex items-center gap-2">
+                                <span>🔊 播放模擬叫聲</span>
+                            </button>
+                        </div>
+                    `;
+
+                    modalEl.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden'; // 防止背景滾動
+                },
+
+                closeModal: function() {
+                    modalEl.classList.add('hidden');
+                    document.body.style.overflow = '';
+                },
+
+                playBark: playSyntheticBark,
+
+                // 測驗邏輯
+                selectQuizAns: function(questionNum, value) {
+                    quizAnswers[questionNum] = value;
+                    
+                    // UI 更新
+                    const btns = document.querySelectorAll(`.quiz-ans-${questionNum}`);
+                    btns.forEach(btn => {
+                        btn.classList.remove('border-amber-400', 'bg-slate-700', 'ring-2', 'ring-amber-500');
+                        btn.classList.add('border-slate-600', 'bg-slate-700/50');
+                    });
+                    event.currentTarget.classList.remove('border-slate-600', 'bg-slate-700/50');
+                    event.currentTarget.classList.add('border-amber-400', 'bg-slate-700', 'ring-2', 'ring-amber-500');
+
+                    // 檢查是否皆已作答
+                    if(quizAnswers[1] && quizAnswers[2] && quizAnswers[3]) {
+                        document.getElementById('submit-quiz-btn').disabled = false;
+                    }
+                },
+
+                submitQuiz: function() {
+                    const uSize = quizAnswers[1];    // 1:小, 2:中, 3:大
+                    const uEnergy = quizAnswers[2];  // 2, 3, 5
+                    const uShed = quizAnswers[3];    // 1, 3, 5
+
+                    // 計算適配分數 (越低越符合)
+                    let matches = dogDB.map(dog => {
+                        let score = 0;
+                        // 體型懲罰：空間小卻養大狗，極大懲罰
+                        if (dog.sizeValue > uSize) score += (dog.sizeValue - uSize) * 10;
+                        // 運動量差距
+                        score += Math.abs(dog.stats.energy - uEnergy) * 2;
+                        // 掉毛量差距 (如果用戶無法容忍掉毛(1)，但狗掉毛高，加倍懲罰)
+                        let shedDiff = dog.stats.shedding - uShed;
+                        if(shedDiff > 0) score += shedDiff * 3; 
+
+                        return { ...dog, matchScore: score };
+                    });
+
+                    // 排序並取前 3 名
+                    matches.sort((a, b) => a.matchScore - b.matchScore);
+                    const topMatches = matches.slice(0, 3);
+
+                    // 渲染結果
+                    const resultGrid = document.getElementById('quiz-match-grid');
+                    resultGrid.innerHTML = '';
+                    
+                    const medals = ['🥇', '🥈', '🥉'];
+
+                    topMatches.forEach((dog, idx) => {
+                        const card = document.createElement('div');
+                        card.className = "bg-slate-800 rounded-2xl p-5 border border-slate-700 flex flex-col items-center text-center relative card-hover cursor-pointer";
+                        card.onclick = () => app.openModal(dog.id);
+                        
+                        card.innerHTML = `
+                            <div class="absolute -top-4 -left-4 text-4xl drop-shadow-lg">${medals[idx]}</div>
+                            <div class="text-6xl mb-3 mt-2 filter drop-shadow-md">${dog.icon}</div>
+                            <h3 class="text-xl font-bold text-white">${dog.name}</h3>
+                            <span class="mt-2 px-3 py-1 text-xs font-semibold rounded-full bg-slate-700 text-amber-400">${dog.size}</span>
+                            <p class="text-sm text-slate-400 mt-3 line-clamp-2">${dog.apt}</p>
+                            <button class="mt-4 text-sm text-amber-500 font-medium">查看圖鑑 >></button>
+                        `;
+                        resultGrid.appendChild(card);
+                    });
+
+                    document.getElementById('quiz-questions').classList.add('hidden');
+                    document.getElementById('submit-quiz-btn').classList.add('hidden');
+                    document.getElementById('quiz-result').classList.remove('hidden');
+                },
+
+                resetQuiz: function() {
+                    quizAnswers = { 1: 0, 2: 0, 3: 0 };
+                    document.getElementById('submit-quiz-btn').disabled = true;
+                    document.getElementById('submit-quiz-btn').classList.remove('hidden');
+                    document.getElementById('quiz-questions').classList.remove('hidden');
+                    document.getElementById('quiz-result').classList.add('hidden');
+                    
+                    // 重置按鈕樣式
+                    const btns = document.querySelectorAll('[class^="quiz-ans-"]');
+                    btns.forEach(btn => {
+                        btn.classList.remove('border-amber-400', 'bg-slate-700', 'ring-2', 'ring-amber-500');
+                        btn.classList.add('border-slate-600', 'bg-slate-700/50');
+                    });
+                }
+            };
+        })();
+
+        // 頁面載入後初始化
+        document.addEventListener('DOMContentLoaded', app.init);
+    </script>
+</body>
+</html>
